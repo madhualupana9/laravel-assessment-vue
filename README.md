@@ -26,7 +26,7 @@ A Laravel 10 + Vue.js application with two assessment modules:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/your-repo/laravel-assessment-vue.git
+   git clone https://github.com/madhualupana/laravel-assessment-vue.git
    cd laravel-assessment-vue
 
 2. **Install PHP dependencies:**:
