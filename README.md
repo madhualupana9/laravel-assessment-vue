@@ -67,6 +67,38 @@ A Laravel 10 + Vue.js application with two assessment modules:
     open the below commands In separate terminals:
     php artisan serve
     npm run dev
+## Screenshots
+
+### Dashboard Overview
+![Image](https://github.com/user-attachments/assets/eb6af810-5f96-4b3e-8297-e45e96ee071e)
+
+### Assessment 1: User Management
+#### User Listing Page
+![Image](https://github.com/user-attachments/assets/986bccac-c6c9-40dd-ae12-3c5e93e54647)
+
+#### Create New User Form
+![Image](https://github.com/user-attachments/assets/e3fdd630-54bb-4408-8169-ae112f2e0bbd)
+
+#### User Details View
+![Image](https://github.com/user-attachments/assets/47a4a832-fa06-4f1d-a9d9-b939e5def263)
+
+---
+
+### Assessment 2: Category Management
+
+#### Category Listing page
+![Image](https://github.com/user-attachments/assets/b73ff747-6129-4c44-9b1c-acb7f412995d)
+
+#### Category Edit Form
+![image](https://github.com/user-attachments/assets/535d9c5d-af0e-4333-9830-70ad324778c9)
+
+#### Mobile Responsive View
+![image](https://github.com/user-attachments/assets/ce95d5d0-75b9-4d5c-b5e3-133b6813c36a)
+
+### Email Notification Example
+![image](https://github.com/user-attachments/assets/8a920d4a-bfc9-4e97-8e0c-76741b571781)
+
+
 **Project Structure**
 ```bash
 laravel-assessment-vue/
@@ -98,17 +130,3 @@ laravel-assessment-vue/
     └── seeders/
 
 
-Key Functionality
-**Assessment 1: User Management**
-Create/Read/Update/Delete users
-
-Track additional user details through events
-
-Send welcome email on user creation
-
-**Assessment 2: Category Management**
-Category system
-
-Parent-child relationships
-
-Full path display (e.g., "Parent > Child > Subchild")
