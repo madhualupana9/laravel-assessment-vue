@@ -7,7 +7,6 @@ use App\Models\Detail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-
 class Assessment1Controller extends Controller
 {
     public function index()
@@ -30,7 +29,6 @@ class Assessment1Controller extends Controller
     public function create()
     {
         return view('layouts.app');
-
     }
 
     public function store(Request $request)
@@ -54,6 +52,15 @@ class Assessment1Controller extends Controller
         }
 
         $user = User::create($validated);
+        
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'User created successfully',
+                'data' => $user
+            ]);
+        }
+        
         return redirect()->route('assessment1.index')->with('success', 'User created successfully');
     }
 
@@ -87,6 +94,7 @@ class Assessment1Controller extends Controller
         }
 
         $user->update($validated);
+        
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
@@ -94,9 +102,9 @@ class Assessment1Controller extends Controller
                 'data' => $user
             ]);
         }
+        
         return redirect()->route('assessment1.index')->with('success', 'User updated successfully');
     }
-
 
     public function destroy(Request $request, User $User)
     {
@@ -105,7 +113,7 @@ class Assessment1Controller extends Controller
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Category deleted successfully',
+                'message' => 'User deleted successfully',
                 'data' => $User
             ]);
         }
@@ -113,5 +121,44 @@ class Assessment1Controller extends Controller
         return redirect()->route('assessment1.index')->with('success', 'User deleted successfully');
     }
 
-   
+    /**
+     * Check if email already exists
+     */
+    public function checkEmail(Request $request)
+{
+    logger('Checking email: '.$request->email);
+
+    $request->validate([
+        'email' => 'required|email',
+        'exclude_id' => 'nullable|integer'
+    ]);
+
+    $exists = User::where('email', $request->email)
+                ->when($request->exclude_id, function($query) use ($request) {
+                    $query->where('id', '!=', $request->exclude_id);
+                })
+                ->exists();
+
+    return response()->json(['exists' => $exists]);
+}
+
+
+    /**
+     * Check if username already exists
+     */
+    public function checkUsername(Request $request)
+    {
+        $request->validate([
+            'username' => 'required|string',
+            'exclude_id' => 'nullable|integer'
+        ]);
+
+        $exists = User::where('username', $request->username)
+                    ->when($request->exclude_id, function($query) use ($request) {
+                        $query->where('id', '!=', $request->exclude_id);
+                    })
+                    ->exists();
+
+        return response()->json(['exists' => $exists]);
+    }
 }

@@ -108,9 +108,10 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import axios from 'axios'
 import { useRouter } from 'vue-router'
+import { debounce } from 'lodash-es'
 
 export default {
   name: 'UserForm',
@@ -139,104 +140,142 @@ export default {
 
     const isEdit = ref(false)
     const isSubmitting = ref(false)
-
+    const checkingUniqueness = ref(false)
     const usernameError = ref('')
     const emailError = ref('')
 
-    async function checkUniqueFields() {
-      // Check for unique email
-      if (form.value.email) {
-        try {
-          const response = await axios.get(`/api/users/check-email?email=${form.value.email}`);
-          if (response.data.exists) {
-            emailError.value = 'Email is already taken';
-          } else {
-            emailError.value = '';
+    const debouncedCheckUniqueFields = debounce(async () => {
+      checkingUniqueness.value = true
+      
+      try {
+        // Check for unique email
+        if (form.value.email) {
+          try {
+         
+            const params = { email: form.value.email }
+            if (isEdit.value) params.exclude_id = props.id
+             
+            const response = await axios.get('/api/users/check-email', { params })
+            console.log(response.data.exists);
+            emailError.value = response.data.exists ? 'Email is already taken' : ''
+          } catch (error) {
+            emailError.value = 'Error checking email'
+            console.error('Email check error:', error)
           }
-        } catch (error) {
-          emailError.value = 'Error checking email uniqueness';
         }
-      }
 
-      // Check for unique username
-      if (form.value.username) {
-        try {
-          const response = await axios.get(`/api/users/check-username?username=${form.value.username}`);
-          if (response.data.exists) {
-            usernameError.value = 'Username is already taken';
-          } else {
-            usernameError.value = '';
+        // Check for unique username
+        if (form.value.username) {
+          try {
+            const params = { username: form.value.username }
+            if (isEdit.value) params.exclude_id = props.id
+            
+            const response = await axios.get('/api/users/check-email', { params })
+            usernameError.value = response.data.exists ? 'Username is already taken' : ''
+          } catch (error) {
+            usernameError.value = 'Error checking username'
+            console.error('Username check error:', error)
           }
-        } catch (error) {
-          usernameError.value = 'Error checking username uniqueness';
         }
+      } finally {
+        checkingUniqueness.value = false
       }
-    }
-
+    }, 500)
 
     async function fetchUser() {
-  try {
-    const response = await axios.get(`/api/users/${props.id}`)
-    console.log('API Response:', response.data) // Debug log
-    
-    // Assign each field individually to maintain reactivity
-    const userData = response.data.data || response.data
-    form.value = {
-      prefixname: userData.prefixname || 'Mr.',
-      firstname: userData.firstname || '',
-      middlename: userData.middlename || '',
-      lastname: userData.lastname || '',
-      suffixname: userData.suffixname || '',
-      username: userData.username || '',
-      email: userData.email || '',
-      password: '', // Don't pre-fill passwords
-      password_confirmation: '', // Don't pre-fill passwords
-      photo: userData.photo || null,
-      type: userData.type || 'user'
+      try {
+        const response = await axios.get(`/api/users/${props.id}`)
+        console.log('API Response:', response.data)
+        
+        const userData = response.data.data || response.data
+        form.value = {
+          prefixname: userData.prefixname || 'Mr.',
+          firstname: userData.firstname || '',
+          middlename: userData.middlename || '',
+          lastname: userData.lastname || '',
+          suffixname: userData.suffixname || '',
+          username: userData.username || '',
+          email: userData.email || '',
+          password: '',
+          password_confirmation: '',
+          photo: userData.photo || null,
+          type: userData.type || 'user'
+        }
+      } catch (error) {
+        console.error('Failed to fetch user:', error)
+        emit('error', 'Failed to load user data')
+      }
     }
-    
-    console.log('Form data after assignment:', form.value) // Debug log
-  } catch (error) {
-    console.error('Failed to fetch user:', error)
-    emit('error', 'Failed to load user data')
-  }
-}
+
+    watch(
+      () => form.value.email,
+      () => {
+        if (form.value.email) {
+          debouncedCheckUniqueFields()
+        } else {
+          emailError.value = ''
+        }
+      }
+    )
+
+    watch(
+      () => form.value.username,
+      () => {
+        if (form.value.username) {
+          debouncedCheckUniqueFields()
+        } else {
+          usernameError.value = ''
+        }
+      }
+    )
 
     async function submitForm() {
-  isSubmitting.value = true;
-  try {
-    const payload = { ...form.value };
+      // Force immediate check before submission
+      await debouncedCheckUniqueFields.flush()
+      
+      if (usernameError.value || emailError.value) {
+        return
+      }
 
-    if (isEdit.value && !payload.password) {
-      delete payload.password;
-      delete payload.password_confirmation;
+      isSubmitting.value = true
+      try {
+        const payload = { ...form.value }
+
+        if (isEdit.value && !payload.password) {
+          delete payload.password
+          delete payload.password_confirmation
+        }
+
+        const endpoint = isEdit.value 
+          ? `/api/users/${props.id}`
+          : `/api/users`
+
+        const response = isEdit.value
+          ? await axios.put(endpoint, payload)
+          : await axios.post(endpoint, payload)
+
+        emit('success', isEdit.value ? 'User updated!' : 'User created!')
+        await router.push({ name: 'user-list' })
+
+      } catch (error) {
+        console.error('Submission error:', error)
+        
+        if (error.response?.status === 422) {
+          const errors = error.response.data.errors
+          if (errors.email) {
+            emailError.value = errors.email[0]
+          }
+          if (errors.username) {
+            usernameError.value = errors.username[0]
+          }
+          emit('error', Object.values(errors).flat().join(', '))
+        } else {
+          emit('error', error.response?.data?.message || 'Request failed')
+        }
+      } finally {
+        isSubmitting.value = false
+      }
     }
-
-    // Correct API endpoints
-    const endpoint = isEdit.value 
-      ? `/api/users/${props.id}`  // PUT for updates
-      : `/api/users`;            // POST for creation
-
-    const response = isEdit.value
-      ? await axios.put(endpoint, payload)
-      : await axios.post(endpoint, payload);
-
-    emit('success', isEdit.value ? 'User updated!' : 'User created!');
-    await router.push({ name: 'user-list' });
-
-  } catch (error) {
-    console.error('Submission error:', error);
-    
-    if (error.response?.status === 422) {
-      const errors = error.response.data.errors;
-      emit('error', Object.values(errors).flat().join(', '));
-    } else {
-      emit('error', error.response?.data?.message || 'Request failed');
-    }
-  } finally {
-    isSubmitting.value = false;
-  }
-}
 
     onMounted(async () => {
       if (props.id) {
@@ -249,7 +288,10 @@ export default {
       form,
       isEdit,
       isSubmitting,
-      submitForm
+      checkingUniqueness,
+      submitForm,
+      usernameError,
+      emailError
     }
   }
 }
